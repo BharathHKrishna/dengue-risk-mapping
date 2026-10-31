@@ -75,3 +75,22 @@ def india_state_year(cfg: dict, valid_states: set[str]) -> pd.DataFrame:
     tidy = tidy.rename(columns={"dengue_total": "cases"})
     tidy.to_parquet(out)
     return tidy
+
+
+def india_national_monthly(cfg: dict) -> pd.DataFrame:
+    """India national monthly cases (OpenDengue Admin0 Month records): month, cases."""
+    raw = Path(cfg["paths"]["raw"])
+    z = download(URL, raw / "opendengue" / "Spatial_extract_V1_3.zip", raw, note="OpenDengue V1.3")
+    with zipfile.ZipFile(z) as zf:
+        name = next(n for n in zf.namelist() if n.endswith(".csv"))
+        with zf.open(name) as f:
+            df = pd.read_csv(f, low_memory=False)
+    ind = df[(df["adm_0_name"] == "INDIA") & (df["S_res"] == "Admin0") & (df["T_res"] == "Month")]
+    out = ind.assign(
+        month=pd.to_datetime(ind["calendar_start_date"]).dt.to_period("M").dt.to_timestamp()
+    )
+    return (
+        out.groupby("month", as_index=False)["dengue_total"]
+        .sum()
+        .rename(columns={"dengue_total": "cases"})
+    )

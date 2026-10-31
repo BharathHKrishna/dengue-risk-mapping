@@ -75,3 +75,10 @@ model:
 
 eval:
   n_bootstrap: 1000
+
+final:
+  # Deployment model (climate only): trained on these label years, intervals
+  # conformalized on the calibration years.
+  train_years: [2015, 2024]
+  calib_years: [2025, 2025]
+  map_start: "2023-01"

@@ -55,7 +55,121 @@ def stage_gee_brazil(cfg: dict) -> None:
     log.info("climate: %d rows", len(dyn))
 
 
-STAGES = {"boundaries": stage_boundaries, "cases": stage_cases, "gee_brazil": stage_gee_brazil}
+def stage_features(cfg: dict) -> None:
+    """Join monthly labels, lagged climate and static covariates into the Brazil table."""
+    import geopandas as gpd
+    import pandas as pd
+
+    from dengue.features.build import build_table
+    from dengue.ingest.infodengue import weekly_to_monthly
+    from dengue.utils.config import path
+
+    weekly = pd.read_parquet(path(cfg, "interim", "infodengue_weekly.parquet"))
+    monthly = weekly_to_monthly(weekly)
+    clim = pd.read_parquet(path(cfg, "interim", "brazil_climate_monthly.parquet"))
+    static = pd.read_parquet(path(cfg, "interim", "brazil_static.parquet"))
+    muni = gpd.read_parquet(path(cfg, "interim", "brazil_municipalities.parquet"))
+    df = build_table(monthly, clim, static.drop(columns=["pop_density"]), cfg)
+    df = df.merge(muni[["geocode", "name", "uf", "region"]], on="geocode", how="left")
+    df.to_parquet(path(cfg, "processed", "brazil_monthly.parquet"))
+    log.info(
+        "processed table: %d rows, %d municipalities, %s to %s",
+        len(df),
+        df["geocode"].nunique(),
+        df["month"].min().date(),
+        df["month"].max().date(),
+    )
+
+
+def stage_india(cfg: dict) -> None:
+    """India boundaries, state-year labels, and GEE covariates for districts."""
+    from pathlib import Path
+
+    from dengue.ingest import gee_extract as g
+    from dengue.ingest.india_boundaries import india_districts, india_states
+    from dengue.ingest.opendengue import india_state_year
+    from dengue.utils.config import path
+
+    states = india_states(cfg)
+    districts = india_districts(cfg)
+    india_state_year(cfg, set(states["state"]))
+    # Assign 2011 districts to current states (Telangana, Ladakh did not exist in 2011).
+    pts = districts.copy()
+    pts["geometry"] = pts.geometry.representative_point()
+    joined = pts.sjoin(states[["state", "geometry"]], predicate="within", how="left")
+    districts["state_current"] = joined["state_right"].to_numpy()
+    districts["area_km2"] = districts.to_crs("ESRI:54009").area / 1e6
+    simp = districts.copy()
+    simp["geometry"] = simp.geometry.simplify(0.01, preserve_topology=True)
+    simp.to_parquet(path(cfg, "interim", "india_districts_simplified.parquet"))
+    g.initialize()
+    gc = cfg["gee"]
+    cache = Path(cfg["paths"]["raw"]) / "gee" / "india"
+    fc = simp[["district_id", "geometry"]]
+    static = g.extract_static(fc, "district_id", gc["static_year"], cache, ntl_year=gc["ntl_year"])
+    static = static.merge(districts[["district_id", "area_km2"]], on="district_id")
+    static["pop"] = static["pop_density"] * static["area_km2"]
+    static.to_parquet(path(cfg, "interim", "india_static.parquet"))
+    dyn = g.extract_dynamic(fc, "district_id", gc["climate_start"], gc["climate_end"], cache)
+    dyn.to_parquet(path(cfg, "interim", "india_climate_monthly.parquet"))
+    log.info("india: %d districts, %d climate rows", len(static), len(dyn))
+
+
+def stage_temporal(cfg: dict) -> None:
+    """Temporal hold-out validation."""
+    from dengue.experiments import run_temporal
+
+    print(run_temporal(cfg).to_string())
+
+
+def stage_spatial(cfg: dict) -> None:
+    """Spatial blocked cross-validation."""
+    from dengue.experiments import run_spatial
+
+    print(run_spatial(cfg).to_string())
+
+
+def stage_explain(cfg: dict) -> None:
+    """SHAP analysis and biological sanity checks."""
+    from dengue.stages import run_explain
+
+    run_explain(cfg)
+
+
+def stage_final(cfg: dict) -> None:
+    """Train the deployment model."""
+    from dengue.stages import run_final
+
+    run_final(cfg)
+
+
+def stage_transfer(cfg: dict) -> None:
+    """Brazil to India transfer test."""
+    from dengue.stages import run_transfer
+
+    run_transfer(cfg)
+
+
+def stage_export(cfg: dict) -> None:
+    """Export predictions and boundaries for the web app."""
+    from dengue.stages import run_export
+
+    run_export(cfg)
+
+
+STAGES = {
+    "boundaries": stage_boundaries,
+    "cases": stage_cases,
+    "gee_brazil": stage_gee_brazil,
+    "features": stage_features,
+    "india": stage_india,
+    "temporal": stage_temporal,
+    "spatial": stage_spatial,
+    "explain": stage_explain,
+    "final": stage_final,
+    "transfer": stage_transfer,
+    "export": stage_export,
+}
 
 
 def main() -> None:
