@@ -1,25 +1,41 @@
 # Progress
 
 Resume rule: on restart, read this file first and continue from "Next step".
+All pipeline stages: `python -m dengue.cli <stage>`, in order:
+boundaries, cases, gee_brazil, features, india, temporal, spatial, explain, final, transfer, export
+(`python -m dengue.cli all` runs everything). Earth Engine project is in `.env` (EE_PROJECT, gitignored).
 
-## Current week: 1 (repo setup, data audit), with the Week 2 InfoDengue pull already running
+## Current state: data pulls running, all code for Weeks 1 to 9 written and smoke tested
 
-## Done
-- Verified sources (2026-10-30): InfoDengue alertcity API (CSV, about 1 s per call), the three OpenDengue V1.3 zips, the IBGE geoftp 2022 municipal mesh.
-- Not reachable: the IBGE REST API (servicodados.ibge.gov.br) times out from this machine, so the geoftp mesh is used instead.
-- OpenDengue India coverage: state by year, 1997 to 2024 (no 2013 to 2014), no district or monthly data. Details are in docs/DATA_SOURCES.md.
-- Environment: .venv (Python 3.11.9). Direct dependencies pinned in pyproject.toml, full lock in requirements.lock.
-- Config (configs/default.yaml), utils (config, cache with manifest, logging, seed), CLI (`python -m dengue.cli <stage>`).
-- Brazil boundaries: 5,570 municipalities (`python -m dengue.cli boundaries`).
-- InfoDengue parser and tests: 6 tests pass (`pytest`).
+## Week 1 report (done)
+- Verified (2026-10-30/31): InfoDengue API, OpenDengue V1.3 zips, IBGE geoftp mesh, DataMeet India layers, all 10 GEE asset IDs.
+- Not reachable: IBGE REST API (timeout from this machine). Using the geoftp mesh instead.
+- OpenDengue India: state-year 1997 to 2024 (no 2013, 2014), no district or monthly state data; national monthly 2024 to 2025.
+- Changed vs brief: VIIRS `ANNUAL_V22` starts in 2022 (not 2020); MLflow 3.17 needs a SQLite backend.
+- Repo skeleton, pinned deps, config, cache manifest, CI, pre-commit.
 
-## Running
-- `python -m dengue.cli cases` (InfoDengue pull for 5,570 municipalities, 2014 to 2025), log in logs/cases_pull.log.
+## Week 2 (in progress)
+- Boundaries: 5,570 municipalities (two IBGE lagoon pseudo-units dropped).
+- InfoDengue pull running (`python -m dengue.cli cases`, log logs/cases_pull.log). Parser validated on 1,400 real files: 627 weeks each, no null cases or pop.
+- Monthly label: epi weeks assigned to the month of their Wednesday; counts scaled to a 4.345-week month.
+
+## Week 3 (in progress)
+- GEE static covariates for Brazil: done (5,570 rows, GHSL nodata masked after a negative-density bug was caught).
+- GEE monthly climate Brazil 2014-09 to 2026-09: running (logs/gee_brazil.log). India districts: running (logs/india.log).
+
+## Weeks 4 to 9 (code done, waiting for data)
+- experiments.py: climatology and last-year baselines, LightGBM with and without AR features, 3 seeds, cluster bootstrap CIs, CQR conformal intervals, alert metrics, MLflow logging.
+- Spatial CV: leave-one-macro-region-out, blocked in space and time.
+- SHAP + biological sanity checks, final deployment model, India transfer test, map export.
+- FastAPI + Leaflet app, Dockerfile, render.yaml, monthly GitHub Actions update.
+- 27 tests pass (parsers, lags, no-leakage, splits, metrics, conformal, API).
+- Smoke test on a North-only subset ran every modeling stage end to end (numbers not reported, toy run).
 
 ## Open problems
-- Earth Engine is not authenticated on this machine. Needed from Week 3.
-- No `make` on Windows. The Makefile wraps the Python CLI, which also runs directly.
-- Network calls must run outside the tool sandbox (DNS is blocked inside it).
+- Smoke run hint: conformal intervals calibrated on 2022 may under-cover later years (shift). Check on full data.
+- Deployment needs a Render account and a GitHub remote. Monthly job needs GEE service account secrets.
+- Docker daemon is not running on this machine, so the image is not built locally yet.
+- CLAUDE.md and the brief are in the first commit's history (untracked since). Strip before a public push if wanted.
 
 ## Next step
-- Finish the Week 1 docs, commit, then build the monthly label table once the pull finishes.
+- When pulls finish: `features`, `temporal`, `spatial`, `explain`, `final`, `transfer`, `export`; then README, model card, report.
