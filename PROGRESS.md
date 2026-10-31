@@ -5,7 +5,15 @@ All pipeline stages: `python -m dengue.cli <stage>`, in order:
 boundaries, cases, gee_brazil, features, india, temporal, spatial, explain, final, transfer, export
 (`python -m dengue.cli all` runs everything). Earth Engine project is in `.env` (EE_PROJECT, gitignored).
 
-## Current state: data pulls running, all code for Weeks 1 to 9 written and smoke tested
+## Current state: detached pipeline running (started 2026-10-31 00:48)
+
+`scripts/run_pipeline_detached.py` was started with `Start-Process -WindowStyle Hidden` so it
+survives closing VS Code. It runs `cases` + `gee_brazil` in parallel, then features, temporal,
+spatial, explain, final, transfer, export. On resume:
+1. Read `logs/pipeline.log` (look for "ALL STAGES DONE" or "STOPPED at stage X").
+2. If stopped, read `logs/stage_<X>.log`, fix, and rerun from that stage with `python -m dengue.cli <X>` (earlier stages are cached).
+3. Check results/*.csv, then write README, model card, report, and deploy.
+If the PC slept or rebooted, just start the runner again: completed pulls are cached and resume.
 
 ## Week 1 report (done)
 - Verified (2026-10-30/31): InfoDengue API, OpenDengue V1.3 zips, IBGE geoftp mesh, DataMeet India layers, all 10 GEE asset IDs.
