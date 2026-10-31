@@ -41,7 +41,11 @@ def load_table(cfg: dict) -> pd.DataFrame:
 
 
 def _start_run(cfg: dict, name: str) -> None:
-    mlflow.set_tracking_uri(Path(cfg["paths"]["mlruns"]).as_uri())
+    store = Path(cfg["paths"]["mlruns"])
+    store.mkdir(parents=True, exist_ok=True)
+    mlflow.set_tracking_uri("sqlite:///" + (store / "mlflow.db").as_posix())
+    if mlflow.get_experiment_by_name("dengue-brazil") is None:
+        mlflow.create_experiment("dengue-brazil", artifact_location=(store / "artifacts").as_uri())
     mlflow.set_experiment("dengue-brazil")
     mlflow.start_run(run_name=name)
     mlflow.set_tags({"git_hash": git_hash(), "config": cfg["_config_path"]})
