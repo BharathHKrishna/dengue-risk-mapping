@@ -1,0 +1,10 @@
+# Render blueprint: one Docker web service serving API and map.
+services:
+  - type: web
+    name: dengue-risk-map
+    runtime: docker
+    dockerfilePath: ./app/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true

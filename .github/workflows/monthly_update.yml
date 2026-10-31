@@ -1,0 +1,32 @@
+name: monthly-update
+# Pulls the newest climate months from Earth Engine, appends predictions for the
+# map, and commits the refreshed app data (Render redeploys on push).
+on:
+  schedule:
+    - cron: "0 6 12 * *"  # 12th of each month, after ERA5-Land monthly is published
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Run incremental update
+        env:
+          EE_PROJECT: ${{ secrets.EE_PROJECT }}
+          EE_SERVICE_ACCOUNT: ${{ secrets.EE_SERVICE_ACCOUNT }}
+          EE_PRIVATE_KEY_JSON: ${{ secrets.EE_PRIVATE_KEY_JSON }}
+        run: python -m dengue.update
+      - name: Commit refreshed data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/data
+          git diff --cached --quiet || git commit -m "Monthly data refresh $(date -u +%Y-%m)"
+          git push

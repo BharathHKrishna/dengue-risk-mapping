@@ -182,6 +182,18 @@ def run_export(cfg: dict) -> None:
     )
 
     _write_geo(cfg)
+    # Static covariates and the frozen model, committed so the monthly job can run in CI.
+    bs = static.drop(columns=["pop_density"]).assign(
+        geocode_id="BR-" + static["geocode"].astype(str)
+    )
+    bs.drop(columns=["geocode"]).to_parquet(APP_DATA / "brazil_static.parquet", index=False)
+    ist = pd.read_parquet(path(cfg, "interim", "india_static.parquet"))
+    ist.drop(columns=["pop_density", "pop", "area_km2"]).to_parquet(
+        APP_DATA / "india_static.parquet", index=False
+    )
+    from dengue.update import copy_models_to_app
+
+    copy_models_to_app(cfg)
     meta = {
         "climate_data_through": cfg["gee"]["climate_end"],
         "latest_prediction_month": end,
@@ -216,7 +228,7 @@ def _write_geo(cfg: dict) -> None:
     )
     s = gpd.read_parquet(path(cfg, "interim", "india_states.parquet"))
     s["geometry"] = s.geometry.simplify(0.02, preserve_topology=True)
-    s = s.assign(region_id=s["state"])  # validation is keyed by state name
+    s = s.assign(region_id="IN-STATE-" + s["state"])
     s[["region_id", "state", "geometry"]].to_file(
         APP_DATA / "india_states.geojson", driver="GeoJSON", COORDINATE_PRECISION=3
     )
