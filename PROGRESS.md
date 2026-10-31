@@ -5,9 +5,9 @@ All pipeline stages: `python -m dengue.cli <stage>`, in order:
 boundaries, cases, gee_brazil, features, india, temporal, spatial, explain, final, transfer, export
 (`python -m dengue.cli all` runs everything). Earth Engine project is in `.env` (EE_PROJECT, gitignored).
 
-## Current state: detached pipeline running (started 2026-10-31 00:48)
+## Current state: detached pipeline running (relaunched 2026-10-31 00:52, user closed VS Code)
 
-`scripts/run_pipeline_detached.py` was started with `Start-Process -WindowStyle Hidden` so it
+`scripts/run_pipeline_detached.py` was relaunched 00:52 via WMI (Win32_Process Create, parent WmiPrvSE) so it
 survives closing VS Code. It runs `cases` + `gee_brazil` in parallel, then features, temporal,
 spatial, explain, final, transfer, export. On resume:
 1. Read `logs/pipeline.log` (look for "ALL STAGES DONE" or "STOPPED at stage X").

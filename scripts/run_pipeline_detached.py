@@ -4,8 +4,11 @@ Runs the two data pulls in parallel (both resume from their caches), then every
 later stage in order. Stops at the first failing stage. Progress goes to
 ``logs/pipeline.log``; each stage also has its own log in ``logs/``.
 
-Start detached on Windows (PowerShell):
-    Start-Process -WindowStyle Hidden .venv\\Scripts\\python.exe scripts\\run_pipeline_detached.py
+Start detached on Windows (PowerShell). Use WMI so the process is created outside
+the editor's job object and survives the editor closing:
+    Invoke-CimMethod Win32_Process -MethodName Create -Arguments @{
+        CommandLine = '"<repo>\\.venv\\Scripts\\python.exe" scripts\\run_pipeline_detached.py';
+        CurrentDirectory = '<repo>' }
 """
 
 from __future__ import annotations
@@ -37,9 +40,19 @@ def start(stage: str) -> subprocess.Popen:
     )
 
 
+def keep_awake() -> None:
+    """Ask Windows not to idle-sleep while this process runs (no effect elsewhere)."""
+    if sys.platform == "win32":
+        import ctypes
+
+        es_continuous, es_system_required = 0x80000000, 0x00000001
+        ctypes.windll.kernel32.SetThreadExecutionState(es_continuous | es_system_required)
+
+
 def main() -> int:
     """Run parallel pulls, then the sequential stages."""
     LOGS.mkdir(exist_ok=True)
+    keep_awake()
     note(f"pipeline started (pid of runner: {__import__('os').getpid()})")
     procs = {s: start(s) for s in PARALLEL}
     while any(p.poll() is None for p in procs.values()):

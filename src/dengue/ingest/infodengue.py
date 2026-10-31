@@ -128,7 +128,10 @@ def fetch_municipality(cfg: dict, geocode: int, session: requests.Session) -> Pa
             r = session.get(url, timeout=icfg["timeout_s"])
             r.raise_for_status()
             dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_text(r.text, encoding="utf-8")
+            # Write then rename, so an interrupted run never leaves a truncated cache file.
+            tmp = dest.with_suffix(".csv.part")
+            tmp.write_text(r.text, encoding="utf-8")
+            tmp.replace(dest)
             record_pull(raw, url, dest, note="InfoDengue alertcity")
             time.sleep(icfg["delay_s"])
             return dest
