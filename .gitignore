@@ -36,3 +36,29 @@ results/**/*.parquet
 app/web/dist/
 .coverage
 htmlcov/
+
+# Secrets (Earth Engine service account keys, local env files)
+.env.*
+!.env.example
+*.pem
+*-key.json
+*_key.json
+*service-account*.json
+*service_account*.json
+.config/
+
+# Intermediate model files (the deployment copy lives in app/models and IS tracked)
+results/models/
+
+# Report build outputs (keep .tex sources and the final PDF)
+report/*.out
+report/*.toc
+report/*.bbl
+report/*.blg
+report/*.fls
+report/*.fdb_latexmk
+report/*.synctex.gz
+
+# Misc scratch
+*.tmp
+nohup.out
