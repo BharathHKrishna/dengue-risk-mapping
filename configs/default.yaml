@@ -1,0 +1,75 @@
+# Main configuration. Every pipeline stage reads this file.
+project: dengue-risk-mapping
+seeds: [0, 1, 2]
+
+paths:
+  raw: data/raw
+  interim: data/interim
+  processed: data/processed
+  results: results
+  mlruns: mlruns
+
+brazil:
+  # Weekly InfoDengue pulls cover this range of epidemiological years.
+  infodengue:
+    disease: dengue
+    ey_start: 2014
+    ey_end: 2025
+    delay_s: 0.5
+    timeout_s: 60
+  # Monthly modelling table: label months in this range.
+  label_start: "2015-01"
+  label_end: "2025-12"
+  boundaries_url: "https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2022/Brasil/BR/BR_Municipios_2022.zip"
+  # Macro-regions, keyed by the first digit of the IBGE municipality code.
+  regions:
+    1: North
+    2: Northeast
+    3: Southeast
+    4: South
+    5: Center-West
+
+india:
+  label_years: [2015, 2024]
+  map_month_start: "2015-01"
+
+gee:
+  # Project id is read from the env var EE_PROJECT. Credentials never live in the repo.
+  climate_start: "2014-09"
+  climate_end: "2025-12"
+  static_year: 2020
+
+features:
+  lags: [1, 2, 3]
+  climate_vars: [t2m_mean, t2m_min, t2m_max, rh_mean, precip_era5, precip_chirps, lst_day]
+  static_vars: [pop_density_log, built_frac, water_occurrence, ndvi_mean, elevation, ntl_mean,
+                lc_tree, lc_shrub, lc_grass, lc_crop, lc_built, lc_bare, lc_water, lc_wetland]
+  ar_lags: [1, 2, 3, 12]
+
+target:
+  # High-incidence alert: month is "high" if log1p(incidence) exceeds the
+  # municipality's own 75th percentile, computed on training years only.
+  high_quantile: 0.75
+
+split:
+  train_years: [2015, 2021]
+  calib_years: [2022, 2022]
+  test_years: [2023, 2025]
+
+model:
+  lightgbm:
+    objective: regression
+    learning_rate: 0.05
+    num_leaves: 63
+    min_data_in_leaf: 100
+    feature_fraction: 0.8
+    bagging_fraction: 0.8
+    bagging_freq: 1
+    lambda_l2: 1.0
+    n_estimators: 800
+    verbose: -1
+  quantiles: [0.05, 0.5, 0.95]
+  interval_alpha: 0.10
+
+eval:
+  n_bootstrap: 1000

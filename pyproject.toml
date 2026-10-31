@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dengue"
+version = "0.1.0"
+description = "Satellite and climate based dengue risk mapping with spatial transfer tests (Brazil to India)"
+requires-python = ">=3.11"
+authors = [{ name = "Bharath Harikrishna" }]
+# Direct dependencies, pinned. The full transitive lock is in requirements.lock.
+dependencies = [
+  "earthengine-api==1.7.50",
+  "fastapi==0.162.0",
+  "geopandas==1.2.0",
+  "httpx==0.28.1",
+  "lightgbm==4.7.0",
+  "matplotlib==3.11.2",
+  "mlflow==3.17.2",
+  "numpy==2.4.6",
+  "pandas==3.1.0",
+  "pyarrow==25.0.1",
+  "pyogrio==0.13.0",
+  "pyproj==3.7.2",
+  "PyYAML==6.0.3",
+  "requests==2.34.2",
+  "scikit-learn==1.9.1",
+  "scipy==1.17.1",
+  "shap==0.51.0",
+  "shapely==2.2.0",
+  "uvicorn==0.54.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.2.0", "ruff==0.17.3", "pre-commit"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
