@@ -259,3 +259,47 @@ def run_spatial(cfg: dict) -> pd.DataFrame:
     mlflow.log_artifact(str(path(cfg, "results", "spatial_metrics.csv")))
     mlflow.end_run()
     return table
+
+
+def run_ablation(cfg: dict) -> pd.DataFrame:
+    """Does climate add skill beyond each place's own seasonal history?
+
+    Compares, on the temporal test years, three LightGBM variants (3 seeds,
+    point models only) that never see recent cases:
+    - ``climatology_only``: the local climatology value plus month of year.
+    - ``climatology_plus_static``: adds static covariates.
+    - ``climatology_plus_climate``: adds the lagged climate features as well.
+    The climatology feature is each municipality's mean ``y`` for that month of
+    year over training years only, so it carries no test-period information.
+    """
+    df = load_table(cfg)
+    masks = temporal_split(df, cfg)
+    df = add_high_label(df, masks["train"], cfg["target"]["high_quantile"])
+    train = df[masks["train"]]
+    df["clim_local"] = climatology(train, df).to_numpy()
+    test = df[masks["test"]]
+    base = test["clim_local"].to_numpy()
+    climate_cols = [c for c in feature_columns(cfg, False) if "_lag" in c]
+    static_cols = list(cfg["features"]["static_vars"])
+    variants = {
+        "climatology_only": ["clim_local", "moy_sin", "moy_cos"],
+        "climatology_plus_static": ["clim_local", "moy_sin", "moy_cos", *static_cols],
+        "climatology_plus_climate": [
+            "clim_local",
+            "moy_sin",
+            "moy_cos",
+            *static_cols,
+            *climate_cols,
+        ],
+    }
+    rows = [_score_block("climatology (no model)", test, base, base, cfg)]
+    for name, cols in variants.items():
+        preds = []
+        for seed in cfg["seeds"]:
+            set_seed(seed)
+            preds.append(fit_point(train[cols], train["y"], cfg, seed).predict(test[cols]))
+        rows.append(_score_block(f"{name} (3-seed mean)", test, np.mean(preds, axis=0), base, cfg))
+        log.info("ablation %s done", name)
+    table = pd.DataFrame(rows)
+    table.to_csv(path(cfg, "results", "ablation_climate_value.csv"), index=False)
+    return table

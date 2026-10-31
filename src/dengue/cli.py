@@ -101,8 +101,10 @@ def stage_india(cfg: dict) -> None:
     # Small islands can fall just outside the state polygon: use the nearest state.
     miss = districts["state_current"].isna()
     if miss.any():
-        near = pts[miss.to_numpy()].to_crs("ESRI:54009").sjoin_nearest(
-            states[["state", "geometry"]].to_crs("ESRI:54009"), how="left"
+        near = (
+            pts[miss.to_numpy()]
+            .to_crs("ESRI:54009")
+            .sjoin_nearest(states[["state", "geometry"]].to_crs("ESRI:54009"), how="left")
         )
         districts.loc[miss, "state_current"] = near["state_right"].to_numpy()
     districts["area_km2"] = districts.to_crs("ESRI:54009").area / 1e6
@@ -134,6 +136,13 @@ def stage_spatial(cfg: dict) -> None:
     from dengue.experiments import run_spatial
 
     print(run_spatial(cfg).to_string())
+
+
+def stage_ablation(cfg: dict) -> None:
+    """Does climate add skill beyond local seasonal climatology?"""
+    from dengue.experiments import run_ablation
+
+    print(run_ablation(cfg).to_string())
 
 
 def stage_explain(cfg: dict) -> None:
@@ -176,6 +185,7 @@ STAGES = {
     "final": stage_final,
     "transfer": stage_transfer,
     "export": stage_export,
+    "ablation": stage_ablation,
 }
 
 
