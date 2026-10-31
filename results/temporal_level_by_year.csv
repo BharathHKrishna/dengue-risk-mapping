@@ -1,0 +1,4 @@
+year,observed_mean_y,climatology_mean,lgbm_climate_mean,lgbm_ar_mean,coverage_lgbm_climate,coverage_lgbm_ar
+2023,2.2317,1.4879,1.3998,1.9985,0.8862,0.8988
+2024,3.2707,1.4879,1.6051,2.8255,0.7676,0.8432
+2025,2.6017,1.4879,1.4157,2.3043,0.8395,0.894
