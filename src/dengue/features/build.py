@@ -12,9 +12,16 @@ import pandas as pd
 
 
 def add_target(df: pd.DataFrame) -> pd.DataFrame:
-    """Add incidence per 100k and ``y = log1p(incidence)``."""
+    """Add incidence per 100k and ``y = log1p(incidence)``.
+
+    Calendar months hold 4 or 5 epi weeks, so when ``n_weeks`` is present the
+    count is scaled to a standard month of 52.18 / 12 = 4.345 weeks.
+    """
     out = df.copy()
-    out["incidence"] = out["cases"] / out["pop"] * 1e5
+    cases = out["cases"]
+    if "n_weeks" in out:
+        cases = cases / out["n_weeks"] * (52.18 / 12)
+    out["incidence"] = cases / out["pop"] * 1e5
     out["y"] = np.log1p(out["incidence"])
     return out
 
