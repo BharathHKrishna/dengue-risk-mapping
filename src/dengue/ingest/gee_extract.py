@@ -42,8 +42,14 @@ ASSETS = {
 
 # ESA WorldCover class codes -> static feature names.
 WORLDCOVER = {
-    10: "lc_tree", 20: "lc_shrub", 30: "lc_grass", 40: "lc_crop", 50: "lc_built",
-    60: "lc_bare", 80: "lc_water", 90: "lc_wetland",
+    10: "lc_tree",
+    20: "lc_shrub",
+    30: "lc_grass",
+    40: "lc_crop",
+    50: "lc_built",
+    60: "lc_bare",
+    80: "lc_water",
+    90: "lc_wetland",
 }
 
 DYNAMIC_SCALE = 5000  # m. ERA5-Land is about 11 km, CHIRPS about 5.5 km.
@@ -121,8 +127,11 @@ def static_image(year: int, ntl_year: int = 2022) -> ee.Image:
     so persons per km2 = count * 100 and built fraction = m2 / 10000. Using
     ``pixelArea()`` instead would be evaluated at the reduction scale and be wrong.
     """
-    pop = ee.Image(f"{ASSETS['ghsl_pop']}/{year}").select("population_count").multiply(100)
-    built = ee.Image(f"{ASSETS['ghsl_built']}/{year}").select("built_surface").divide(1e4)
+    # Negative values are GHSL nodata and must be masked before averaging.
+    pop_raw = ee.Image(f"{ASSETS['ghsl_pop']}/{year}").select("population_count")
+    built_raw = ee.Image(f"{ASSETS['ghsl_built']}/{year}").select("built_surface")
+    pop = pop_raw.updateMask(pop_raw.gte(0)).multiply(100)
+    built = built_raw.updateMask(built_raw.gte(0)).divide(1e4)
     water = ee.Image(ASSETS["gsw"]).select("occurrence").unmask(0).divide(100)
     ndvi = (
         ee.ImageCollection(ASSETS["ndvi"])
@@ -201,7 +210,7 @@ def extract_dynamic(
     chunk: int = 150,
     workers: int = 6,
 ) -> pd.DataFrame:
-    """Monthly climate per unit for months in ``[start, end]`` (``YYYY-MM``), cached per chunk-year."""
+    """Monthly climate per unit for months in ``[start, end]`` (YYYY-MM), cached per chunk-year."""
     cache_dir.mkdir(parents=True, exist_ok=True)
     gdf = gdf.sort_values(id_col).reset_index(drop=True)
     chunks = [gdf.iloc[i : i + chunk] for i in range(0, len(gdf), chunk)]
@@ -242,6 +251,7 @@ def extract_static(
     cache_dir: Path,
     chunk: int = 100,
     workers: int = 6,
+    ntl_year: int = 2022,
 ) -> pd.DataFrame:
     """Static covariates (incl. land cover shares) per unit, cached per chunk."""
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -254,7 +264,9 @@ def extract_static(
         f = cache_dir / f"static_{ci:03d}.parquet"
         if f.exists():
             return f
-        a = _reduce_with_fallback(static_image(year), chunks[ci], id_col, STATIC_SCALE, sb)
+        a = _reduce_with_fallback(
+            static_image(year, ntl_year), chunks[ci], id_col, STATIC_SCALE, sb
+        )
         b = _reduce_with_fallback(landcover_image(), chunks[ci], id_col, WORLDCOVER_SCALE, lb)
         out = a.merge(b, on=id_col, how="outer")
         out.to_parquet(f)

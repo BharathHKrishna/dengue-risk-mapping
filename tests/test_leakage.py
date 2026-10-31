@@ -18,9 +18,7 @@ CFG = {
 
 def panel(n_units: int = 6, start: str = "2015-01", months: int = 60) -> pd.DataFrame:
     t = pd.date_range(start, periods=months, freq="MS")
-    df = pd.DataFrame(
-        [(g, m) for g in range(n_units) for m in t], columns=["geocode", "month"]
-    )
+    df = pd.DataFrame([(g, m) for g in range(n_units) for m in t], columns=["geocode", "month"])
     df["year"] = df["month"].dt.year
     # Value encodes the month index so lags can be checked exactly.
     df["v"] = (df["month"].dt.year - 2015) * 12 + df["month"].dt.month

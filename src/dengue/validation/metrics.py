@@ -93,3 +93,50 @@ def cluster_bootstrap(
     return pd.DataFrame(
         {"point": pd.Series(point), "ci_low": s.quantile(0.025), "ci_high": s.quantile(0.975)}
     )
+
+
+def fast_cluster_bootstrap(
+    cluster: np.ndarray,
+    y: np.ndarray,
+    p: np.ndarray,
+    base: np.ndarray,
+    n_boot: int = 1000,
+    seed: int = 0,
+) -> pd.DataFrame:
+    """Cluster bootstrap for MAE, RMSE, R2 and skill versus ``base``.
+
+    These metrics are ratios of sums, so a bootstrap replicate is a weighted
+    sum of per-cluster totals, with multinomial cluster counts as weights.
+    This is exact and far faster than materialising resampled rows.
+    """
+    codes, inv = np.unique(cluster, return_inverse=True)
+    k = len(codes)
+    e, eb = y - p, y - base
+
+    def tot(v: np.ndarray) -> np.ndarray:
+        return np.bincount(inv, weights=v, minlength=k)
+
+    T = np.vstack([tot(np.ones_like(y)), tot(np.abs(e)), tot(e**2), tot(eb**2), tot(y), tot(y**2)])
+    rng = np.random.default_rng(seed)
+    W = rng.multinomial(k, np.full(k, 1 / k), size=n_boot).T  # k x n_boot
+    S = T @ W  # 6 x n_boot
+
+    def metrics(s: np.ndarray) -> dict[str, np.ndarray]:
+        n, ae, se, seb, sy, syy = s
+        sst = syy - sy**2 / n
+        return {
+            "mae": ae / n,
+            "rmse": np.sqrt(se / n),
+            "r2": 1 - se / sst,
+            "skill_vs_clim": 1 - se / seb,
+        }
+
+    point = {m: float(v) for m, v in metrics(T.sum(axis=1)).items()}
+    boot = metrics(S)
+    return pd.DataFrame(
+        {
+            "point": pd.Series(point),
+            "ci_low": pd.Series({m: float(np.quantile(v, 0.025)) for m, v in boot.items()}),
+            "ci_high": pd.Series({m: float(np.quantile(v, 0.975)) for m, v in boot.items()}),
+        }
+    )

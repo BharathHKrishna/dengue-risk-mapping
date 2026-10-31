@@ -53,3 +53,18 @@ def test_climatology_local_and_pooled():
     loc = climatology(train, target)
     assert loc.tolist() == [2.0, 3.0]  # unit 3 unseen, falls back to pooled mean
     assert climatology(train, target, group=None).tolist() == [3.0, 3.0]
+
+
+def test_fast_bootstrap_point_matches_direct_metrics():
+    from dengue.validation.metrics import fast_cluster_bootstrap
+
+    rng = np.random.default_rng(2)
+    cl = np.repeat(np.arange(40), 25)
+    y = rng.normal(size=1000)
+    p = y + rng.normal(scale=0.5, size=1000)
+    b = np.zeros(1000)
+    ci = fast_cluster_bootstrap(cl, y, p, b, n_boot=300)
+    direct = regression_metrics(y, p, base=b)
+    for m in ("mae", "rmse", "r2", "skill_vs_clim"):
+        assert np.isclose(ci.loc[m, "point"], direct[m])
+        assert ci.loc[m, "ci_low"] <= ci.loc[m, "point"] <= ci.loc[m, "ci_high"]

@@ -33,7 +33,29 @@ def stage_cases(cfg: dict) -> None:
     log.info("weekly table: %d rows, %d municipalities", len(weekly), weekly.geocode.nunique())
 
 
-STAGES = {"boundaries": stage_boundaries, "cases": stage_cases}
+def stage_gee_brazil(cfg: dict) -> None:
+    """Extract static and monthly climate covariates for Brazil municipalities."""
+    from pathlib import Path
+
+    import geopandas as gpd
+
+    from dengue.ingest import gee_extract as g
+    from dengue.utils.config import path
+
+    g.initialize()
+    gdf = gpd.read_parquet(path(cfg, "interim", "brazil_municipalities_simplified.parquet"))
+    gdf = gdf[["geocode", "geometry"]]
+    cache = Path(cfg["paths"]["raw"]) / "gee" / "brazil"
+    gc = cfg["gee"]
+    static = g.extract_static(gdf, "geocode", gc["static_year"], cache, ntl_year=gc["ntl_year"])
+    static.to_parquet(path(cfg, "interim", "brazil_static.parquet"))
+    log.info("static: %d rows", len(static))
+    dyn = g.extract_dynamic(gdf, "geocode", gc["climate_start"], gc["climate_end"], cache)
+    dyn.to_parquet(path(cfg, "interim", "brazil_climate_monthly.parquet"))
+    log.info("climate: %d rows", len(dyn))
+
+
+STAGES = {"boundaries": stage_boundaries, "cases": stage_cases, "gee_brazil": stage_gee_brazil}
 
 
 def main() -> None:

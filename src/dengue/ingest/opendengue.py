@@ -21,7 +21,9 @@ from dengue.ingest.india_boundaries import normalize_name
 from dengue.utils.cache import download
 from dengue.utils.config import path
 
-URL = "https://github.com/OpenDengue/master-repo/raw/main/data/releases/V1.3/Spatial_extract_V1_3.zip"
+URL = (
+    "https://github.com/OpenDengue/master-repo/raw/main/data/releases/V1.3/Spatial_extract_V1_3.zip"
+)
 
 ALIASES = {
     "a and n island": "Andaman & Nicobar",
