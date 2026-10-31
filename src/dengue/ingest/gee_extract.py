@@ -114,17 +114,15 @@ def monthly_image(month: str) -> ee.Image:
     ).set("month", month)
 
 
-def static_image(year: int) -> ee.Image:
-    """Static covariates. Densities and fractions are per-pixel, so a mean reducer is exact."""
-    area_km2 = ee.Image.pixelArea().divide(1e6)
-    pop = (
-        ee.Image(f"{ASSETS['ghsl_pop']}/{year}").select("population_count").divide(area_km2)
-    )
-    built = (
-        ee.Image(f"{ASSETS['ghsl_built']}/{year}")
-        .select("built_surface")
-        .divide(ee.Image.pixelArea())
-    )
+def static_image(year: int, ntl_year: int = 2022) -> ee.Image:
+    """Static covariates. Densities and fractions are per-pixel, so a mean reducer is exact.
+
+    GHSL layers are on an equal-area 100 m Mollweide grid (0.01 km2 per cell),
+    so persons per km2 = count * 100 and built fraction = m2 / 10000. Using
+    ``pixelArea()`` instead would be evaluated at the reduction scale and be wrong.
+    """
+    pop = ee.Image(f"{ASSETS['ghsl_pop']}/{year}").select("population_count").multiply(100)
+    built = ee.Image(f"{ASSETS['ghsl_built']}/{year}").select("built_surface").divide(1e4)
     water = ee.Image(ASSETS["gsw"]).select("occurrence").unmask(0).divide(100)
     ndvi = (
         ee.ImageCollection(ASSETS["ndvi"])
@@ -135,7 +133,7 @@ def static_image(year: int) -> ee.Image:
     )
     ntl = (
         ee.ImageCollection(ASSETS["viirs"])
-        .filterDate(f"{year}-01-01", f"{year + 1}-01-01")
+        .filterDate(f"{ntl_year}-01-01", f"{ntl_year + 1}-01-01")
         .select("average")
         .first()
     )

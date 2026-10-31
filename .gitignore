@@ -16,3 +16,23 @@ app/web/node_modules/
 report/*.aux
 report/*.log
 logs/
+
+# Local working files (not part of the project)
+CLAUDE.md
+PROJECT_BRIEF_*.md
+.claude/
+
+# Editors, OS, notebooks
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints/
+
+# Run artifacts and caches
+*.log
+*.part
+results/**/*.parquet
+app/web/dist/
+.coverage
+htmlcov/

@@ -36,8 +36,10 @@ india:
 gee:
   # Project id is read from the env var EE_PROJECT. Credentials never live in the repo.
   climate_start: "2014-09"
-  climate_end: "2025-12"
+  climate_end: "2026-09"
   static_year: 2020
+  # VIIRS ANNUAL_V22 starts in 2022, so night lights use the earliest available year.
+  ntl_year: 2022
 
 features:
   lags: [1, 2, 3]
