@@ -98,6 +98,13 @@ def stage_india(cfg: dict) -> None:
     pts["geometry"] = pts.geometry.representative_point()
     joined = pts.sjoin(states[["state", "geometry"]], predicate="within", how="left")
     districts["state_current"] = joined["state_right"].to_numpy()
+    # Small islands can fall just outside the state polygon: use the nearest state.
+    miss = districts["state_current"].isna()
+    if miss.any():
+        near = pts[miss.to_numpy()].to_crs("ESRI:54009").sjoin_nearest(
+            states[["state", "geometry"]].to_crs("ESRI:54009"), how="left"
+        )
+        districts.loc[miss, "state_current"] = near["state_right"].to_numpy()
     districts["area_km2"] = districts.to_crs("ESRI:54009").area / 1e6
     simp = districts.copy()
     simp["geometry"] = simp.geometry.simplify(0.01, preserve_topology=True)
