@@ -121,11 +121,55 @@ response (optimum near 26 to 29 deg C) and positive lagged rainfall effects.
 
 # 5. Discussion
 
-<!-- DISCUSSION -->
+**Climate explains the season, not the epidemic year.** In the temporal
+hold-out, the climate-only model is almost indistinguishable from each
+municipality's own seasonal climatology (skill 0.012). The test years
+2023 to 2025 were far more intense than the training years (mean $y$ of 2.23,
+3.27 and 2.60 against 0.98 to 2.15 in 2015 to 2022), and the climate model
+raised its 2024 prediction only slightly (mean 1.61 against 1.49 for
+climatology). Multi-year swings in dengue are driven largely by population
+immunity and serotype replacement, which no climate covariate observes.
+Adding past incidence lifts skill to 0.660, but this is mostly persistence and
+assumes last month's cases are known, which reporting delays often prevent.
+
+**Where climate helps is where history is missing.** When whole regions are
+held out, the only history-free alternative is a pooled seasonal average, and
+the climate model beats it in four of five regions (skill up to 0.357 in the
+Center-West). It does not, however, beat a held-out place's own seasonal
+history in four of five regions. The practical reading: a climate model is a
+reasonable prior for places without surveillance, and should be replaced by
+local data as soon as they exist.
+
+**Explanations reveal both biology and confounding.** The learned temperature
+response is unimodal with a peak between 25.8 and 27.5 deg C, matching
+mechanistic estimates, and lagged rainfall and humidity act in the expected
+direction. Elevation is the single most important feature, but with the wrong
+sign for biology: in Brazil the high-burden cities sit on the central plateau.
+This proxy is exactly what broke the India transfer, where Uttarakhand (mean
+district elevation 1,813 m, beyond Brazil's 1,580 m maximum) was ranked
+highest almost entirely through its elevation SHAP contribution.
+
+**Cross-country transfer of spatial ranks failed; seasonality transferred.**
+The Brazil-trained model ranked Indian states worse than population density
+alone and far worse than last year's reported numbers. Yet its national
+monthly curve for 2024 tracked reported cases (Spearman 0.855), peaking two
+months early. Transfer should therefore be evaluated per component (timing
+versus spatial ranking), and features that encode a source country's geography
+(elevation, land cover mixes) should be screened before transfer, for example
+by flagging inputs outside the training range, as the map now does.
 
 # 6. Limitations
 
-<!-- LIMITATIONS -->
+Labels are notified cases and reflect testing and reporting practice, which
+differ strongly between Brazil and India and between Indian states (West
+Bengal has no record for 2018 and 2019 and an implausibly low 2024 total).
+Indian validation is at state-year level only; district maps are unvalidated.
+Population is a single 2020 GHSL epoch for India and nearly constant per
+municipality in InfoDengue. Conformal intervals assume exchangeability between
+calibration and test months, which year-to-year shifts violate; empirical
+coverage was below nominal on later years and varied from 0.74 to 0.98 across
+held-out regions. The no-elevation analysis was chosen after seeing the India
+results and is reported as a diagnostic, not as a validated improvement.
 
 # References
 
