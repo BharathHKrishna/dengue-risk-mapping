@@ -124,3 +124,10 @@ def test_bad_requests(client):
     assert client.get("/risk", params={"region_id": "XX-1", "month": "2025-11"}).status_code == 400
     assert client.get("/risk", params={"region_id": "BR-1", "month": "2030-01"}).status_code == 404
     assert client.get("/risk", params={"region_id": "BR-1", "month": "bad"}).status_code == 422
+
+
+def test_incidence_never_negative():
+    import app.api.main as m
+
+    assert m.inc(-0.5) == 0.0
+    assert m.inc(None) is None

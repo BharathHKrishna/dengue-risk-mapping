@@ -275,9 +275,8 @@ def run_ablation(cfg: dict) -> pd.DataFrame:
     df = load_table(cfg)
     masks = temporal_split(df, cfg)
     df = add_high_label(df, masks["train"], cfg["target"]["high_quantile"])
-    train = df[masks["train"]]
-    df["clim_local"] = climatology(train, df).to_numpy()
-    test = df[masks["test"]]
+    df["clim_local"] = climatology(df[masks["train"]], df).to_numpy()
+    train, test = df[masks["train"]], df[masks["test"]]
     base = test["clim_local"].to_numpy()
     climate_cols = [c for c in feature_columns(cfg, False) if "_lag" in c]
     static_cols = list(cfg["features"]["static_vars"])

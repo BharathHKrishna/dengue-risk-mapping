@@ -75,10 +75,10 @@ def label(feature: str) -> str:
 
 
 def inc(v: float | None) -> float | None:
-    """Back-transform log1p incidence to cases per 100k (rounded)."""
+    """Back-transform log1p incidence to cases per 100k (rounded, floored at 0)."""
     if v is None or (isinstance(v, float) and math.isnan(v)):
         return None
-    return round(math.expm1(v), 2)
+    return round(max(0.0, math.expm1(v)), 2)  # incidence cannot be negative
 
 
 @lru_cache
