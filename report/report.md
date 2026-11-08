@@ -6,7 +6,25 @@ date: "October 2026"
 
 # Abstract
 
-<!-- ABSTRACT -->
+Climate-driven dengue risk maps are often validated where they were
+trained. We build a monthly model from ten public satellite and reanalysis
+layers for all 5,570 Brazilian municipalities (2015 to 2025, InfoDengue
+notified cases) and test it on time periods, regions and a country it never
+saw. On the 2023 to 2025 hold-out, a climate-only LightGBM model barely beats
+each municipality's own seasonal climatology (MSE skill 0.012, 95% CI 0.006
+to 0.017), and given that climatology as an input, climate adds no skill
+(-0.008). Past incidence lifts skill to 0.660, mostly through persistence.
+When whole macro-regions are held out, the climate model beats the
+history-free pooled baseline in four of five regions (skill up to 0.357) but
+not local history. Transferred to India, it reproduces the national seasonal
+cycle (Spearman 0.855 with 2024 monthly cases) yet ranks states worse than
+population density alone (mean Spearman 0.146 vs 0.258). SHAP recovers the
+expected unimodal temperature response (peak 25.8 to 27.5 deg C) and exposes
+elevation as a Brazilian geography proxy that drove the largest India errors;
+24.7% of Indian district-months have inputs outside the training range.
+Conformal 90% intervals covered 0.74 to 0.98 across held-out settings. We
+release the pipeline and a monthly updated map that labels where predictions
+are and are not validated.
 
 # 1. Introduction
 
@@ -117,7 +135,70 @@ response (optimum near 26 to 29 deg C) and positive lagged rainfall effects.
 
 # 4. Results
 
-<!-- RESULTS -->
+**Temporal hold-out** (Table 1; 200,520 test municipality-months). The
+climate-only model reached MAE 1.821 (95% CI 1.799 to 1.843) and skill 0.012
+(0.006 to 0.017) against local climatology (MAE 1.758). Last-year-same-month
+had lower MAE (1.637) but negative skill (-0.040), and the autoregressive
+model reached MAE 0.984 and skill 0.660 (0.654 to 0.667), Spearman 0.821 and
+alert AUC-PR 0.806 (prevalence 0.464). Across the three seeds the standard
+deviation of MAE was at most 0.001. By year, climate-only skill was -0.080,
+0.086 and -0.037 for 2023, 2024 and 2025. Mean observed $y$ in those years was
+2.23, 3.27 and 2.60, while the climate model predicted means of 1.40, 1.61
+and 1.42.
+
+| Table 1 | MAE | Skill vs climatology | Spearman | Alert AUC-PR |
+|---|---|---|---|---|
+| Local climatology | 1.758 [1.736, 1.781] | 0 | 0.576 | 0.515 |
+| Last year, same month | 1.637 [1.621, 1.656] | -0.040 [-0.060, -0.021] | 0.540 | 0.627 |
+| LightGBM, climate only | 1.821 [1.799, 1.843] | 0.012 [0.006, 0.017] | 0.602 | 0.520 |
+| LightGBM + past cases | 0.984 [0.974, 0.995] | 0.660 [0.654, 0.667] | 0.821 | 0.806 |
+
+**Value of climate beyond local history.** With the local climatology value
+as an input, adding static covariates gave skill 0.000 and adding lagged
+climate gave -0.008 (-0.010 to -0.006).
+
+**Spatial blocked CV** (Table 2). Against the pooled climatology that is the
+only option without local data, the climate model's skill was 0.357
+(Center-West), -0.046 (North), 0.041 (Northeast), 0.085 (South) and 0.287
+(Southeast). Against the held-out places' own history it was positive only in
+the South (0.101).
+
+| Table 2: held-out region | Skill vs pooled climatology | Skill vs own history | 90% coverage |
+|---|---|---|---|
+| Center-West | 0.357 [0.336, 0.377] | -0.184 | 0.881 |
+| North | -0.046 [-0.088, -0.005] | -0.235 | 0.861 |
+| Northeast | 0.041 [0.023, 0.059] | -0.010 | 0.978 |
+| South | 0.085 [0.062, 0.107] | 0.101 | 0.751 |
+| Southeast | 0.287 [0.268, 0.304] | -0.084 | 0.741 |
+
+**Uncertainty.** Raw quantile intervals under-covered (0.704 temporal). After
+conformal calibration, coverage was 0.831 (climate only) and 0.878 (with past
+cases) on 2023 to 2025, ranging by year from 0.768 (2024) to 0.886 (2023),
+and 0.741 to 0.978 across held-out regions.
+
+**Transfer to India** (Table 3). Mean Spearman over 2015 to 2024 was 0.146
+(range -0.065 to 0.310), with every yearly 95% state-bootstrap CI including 0;
+population density alone gave 0.258 and the previous reported year 0.695.
+For 2024 the predicted national monthly curve had Spearman 0.855 with reported
+monthly cases, with the predicted peak in August and the reported peak in
+October. 24.7% of district-months (442 of 641 districts) had at least one input
+outside the Brazil training range, most often maximum temperature and
+elevation. A post-hoc model without elevation reached mean Spearman 0.199 in
+India and skill -0.014 in the Brazil temporal test.
+
+| Table 3: ranking method | Mean Spearman (range) | Mean top-5 overlap |
+|---|---|---|
+| Brazil-trained climate model | 0.146 (-0.065 to 0.310) | 1.6 |
+| Population density only | 0.258 (0.064 to 0.477) | 2.7 |
+| Previous reported year | 0.695 (0.562 to 0.824) | 3.3 |
+| Without elevation (diagnostic) | 0.199 (-0.090 to 0.407) | 1.9 |
+
+**Explanations.** Mean 2 m temperature was the most important climate
+variable at all lags (mean |SHAP| 0.090 to 0.094). Its binned SHAP curve
+peaked at 25.8, 27.5 and 26.2 deg C for lags 1, 2 and 3 and declined above.
+Rainfall (CHIRPS) and humidity had positive monotone associations (Spearman
+of value with SHAP 0.65 to 0.69 and 0.53 to 0.89). Elevation had the largest
+mean |SHAP| (0.292) with a positive association (0.83).
 
 # 5. Discussion
 
@@ -170,6 +251,13 @@ calibration and test months, which year-to-year shifts violate; empirical
 coverage was below nominal on later years and varied from 0.74 to 0.98 across
 held-out regions. The no-elevation analysis was chosen after seeing the India
 results and is reported as a diagnostic, not as a validated improvement.
+
+# Reproducibility
+
+Code, configuration and the full result tables are in the repository. One
+command (`python -m dengue.cli all`) runs every stage; raw pulls are cached
+with pull dates; seeds are fixed (0, 1, 2); runs are logged to MLflow with the
+git hash. To produce a PDF: `pandoc report/report.md -o report.pdf`.
 
 # References
 
