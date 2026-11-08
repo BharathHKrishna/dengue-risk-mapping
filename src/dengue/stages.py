@@ -165,34 +165,41 @@ def run_export(cfg: dict) -> None:
     # later months use the final model. Observed values attached where available.
     clim = pd.read_parquet(path(cfg, "interim", "brazil_climate_monthly.parquet"))
     static = pd.read_parquet(path(cfg, "interim", "brazil_static.parquet"))
-    X = build_unlabeled(clim, static.drop(columns=["pop_density"]), cfg, "geocode", start, end)
-    pred, contrib = predict_final(models, X)
-    bp = pd.concat([X[["geocode", "month"]], pred], axis=1)
-    bp["drivers"] = _drivers(contrib, models["cols"])
-    bp["source"] = "final model"
-    tt = pd.read_parquet(path(cfg, "results", "temporal_test_predictions.parquet"))
-    tt = tt.rename(
-        columns={
-            "pred_lgbm_climate": "pred_t",
-            "lo_lgbm_climate": "lo_t",
-            "hi_lgbm_climate": "hi_t",
-        }
-    )
-    bp = bp.merge(
-        tt[["geocode", "month", "y", "pred_t", "lo_t", "hi_t"]], on=["geocode", "month"], how="left"
-    )
-    has_t = bp["pred_t"].notna()
-    bp.loc[has_t, "pred"] = bp.loc[has_t, "pred_t"]
-    bp.loc[has_t, "lo"] = np.minimum(bp.loc[has_t, "lo_t"], bp.loc[has_t, "pred"])
-    bp.loc[has_t, "hi"] = np.maximum(bp.loc[has_t, "hi_t"], bp.loc[has_t, "pred"])
-    bp.loc[has_t, "source"] = "temporal hold-out model (out of sample)"
     obs = load_table(cfg)[["geocode", "month", "y", "cases", "pop"]]
-    bp = bp.drop(columns=["y", "pred_t", "lo_t", "hi_t"]).merge(
-        obs, on=["geocode", "month"], how="left"
-    )
-    bp = bp.rename(columns={"geocode": "region_id", "y": "obs"})
-    bp["region_id"] = "BR-" + bp["region_id"].astype(str)
-    _round(bp).to_parquet(APP_DATA / "brazil_predictions.parquet", index=False)
+    br_out = APP_DATA / "brazil_predictions.parquet"
+    model_file = path(cfg, "results", "models", "final_margin.txt")
+    # The Brazil table takes the longest (SHAP contributions for every row), so it is
+    # only rebuilt when the deployment model is newer than the existing export.
+    if not br_out.exists() or br_out.stat().st_mtime < model_file.stat().st_mtime:
+        X = build_unlabeled(clim, static.drop(columns=["pop_density"]), cfg, "geocode", start, end)
+        pred, contrib = predict_final(models, X)
+        bp = pd.concat([X[["geocode", "month"]], pred], axis=1)
+        bp["drivers"] = _drivers(contrib, models["cols"])
+        bp["source"] = "final model"
+        tt = pd.read_parquet(path(cfg, "results", "temporal_test_predictions.parquet"))
+        tt = tt.rename(
+            columns={
+                "pred_lgbm_climate": "pred_t",
+                "lo_lgbm_climate": "lo_t",
+                "hi_lgbm_climate": "hi_t",
+            }
+        )
+        bp = bp.merge(
+            tt[["geocode", "month", "y", "pred_t", "lo_t", "hi_t"]],
+            on=["geocode", "month"],
+            how="left",
+        )
+        has_t = bp["pred_t"].notna()
+        bp.loc[has_t, "pred"] = bp.loc[has_t, "pred_t"]
+        bp.loc[has_t, "lo"] = np.minimum(bp.loc[has_t, "lo_t"], bp.loc[has_t, "pred"])
+        bp.loc[has_t, "hi"] = np.maximum(bp.loc[has_t, "hi_t"], bp.loc[has_t, "pred"])
+        bp.loc[has_t, "source"] = "temporal hold-out model (out of sample)"
+        bp = bp.drop(columns=["y", "pred_t", "lo_t", "hi_t"]).merge(
+            obs, on=["geocode", "month"], how="left"
+        )
+        bp = bp.rename(columns={"geocode": "region_id", "y": "obs"})
+        bp["region_id"] = "BR-" + bp["region_id"].astype(str)
+        _round(bp).to_parquet(APP_DATA / "brazil_predictions.parquet", index=False)
 
     # India districts: relative risk = percentile of predicted incidence among districts that month.
     dp = pd.read_parquet(path(cfg, "results", "india_district_predictions.parquet"))
@@ -251,7 +258,9 @@ def _write_geo(cfg: dict) -> None:
     br.to_file(APP_DATA / "brazil_municipalities.geojson", driver="GeoJSON", COORDINATE_PRECISION=3)
     d = gpd.read_parquet(path(cfg, "interim", "india_districts_simplified.parquet"))
     d["geometry"] = d.geometry.simplify(0.02, preserve_topology=True)
-    d = d.rename(columns={"district_id": "region_id", "district": "name", "state_current": "state"})
+    d = d.drop(columns=["state"]).rename(
+        columns={"district_id": "region_id", "district": "name", "state_current": "state"}
+    )
     d[["region_id", "name", "state", "geometry"]].to_file(
         APP_DATA / "india_districts.geojson", driver="GeoJSON", COORDINATE_PRECISION=3
     )
