@@ -5,11 +5,25 @@ All pipeline stages: `python -m dengue.cli <stage>`, in order:
 boundaries, cases, gee_brazil, features, india, temporal, spatial, explain, final, transfer, export
 (`python -m dengue.cli all` runs everything). Earth Engine project is in `.env` (EE_PROJECT, gitignored).
 
-## Current state (2026-11-08): stages spatial, explain, final, transfer, export, ablation running
+## Current state (2026-11-08): all pipeline stages done, docs written; deployment pending accounts
 
-Runs as a background chain in the Claude session (WMI-launched processes lost network after
-sleep, so they are not used). If interrupted: check `logs/pipeline.log`, rerun the remaining
-stages with `python -m dengue.cli <stage>` in order (everything before is cached).
+## Weeks 5 to 7 report (done)
+- Spatial CV (`spatial`): skill vs pooled climatology 0.357 CW, -0.046 N, 0.041 NE, 0.085 S, 0.287 SE; worse than local history except South (0.101). Coverage 0.74 to 0.98.
+- SHAP (`explain`): temperature peak 25.8 to 27.5 C; rain and humidity positive; elevation top feature (plateau proxy).
+- Ablation (`ablation`): with local climatology as input, lagged climate gives skill -0.008.
+- India transfer (`transfer`): mean Spearman 0.146 vs density 0.258 vs persistence 0.695; seasonal timing Spearman 0.855 (2024).
+- Diagnostic (`diag`, post hoc): no elevation gives India 0.199, Brazil skill -0.014.
+- 24.7% of India district-months out of Brazil training range (`scripts/extra_analysis.py`).
+
+## Weeks 8 to 10 report (done except deployment)
+- FastAPI + Leaflet map tested locally and in Docker (image 662 MB), extrapolation warnings, incidence floored at 0.
+- Monthly update job tested by simulation: matches full pipeline (corr 0.9999), writes out-of-range flags.
+- README results + interview story, model card, report (report/report.md, about 2,500 words).
+- 28 tests pass, ruff clean.
+
+## Next step
+- Strip CLAUDE.md and brief from git history, rename branch to main, push to GitHub
+  (BharathHKrishna/dengue-risk-mapping), deploy on Render, add EE service account secrets.
 
 ## Week 2 report (done)
 - InfoDengue: 5,570 municipalities, 3,492,390 weekly rows (627 weeks each, none missing).
@@ -33,28 +47,7 @@ stages with `python -m dengue.cli <stage>` in order (everything before is cached
 - Changed vs brief: VIIRS `ANNUAL_V22` starts in 2022 (not 2020); MLflow 3.17 needs a SQLite backend.
 - Repo skeleton, pinned deps, config, cache manifest, CI, pre-commit.
 
-## Week 2 (in progress)
-- Boundaries: 5,570 municipalities (two IBGE lagoon pseudo-units dropped).
-- InfoDengue pull running (`python -m dengue.cli cases`, log logs/cases_pull.log). Parser validated on 1,400 real files: 627 weeks each, no null cases or pop.
-- Monthly label: epi weeks assigned to the month of their Wednesday; counts scaled to a 4.345-week month.
-
-## Week 3 (in progress)
-- GEE static covariates for Brazil: done (5,570 rows, GHSL nodata masked after a negative-density bug was caught).
-- GEE monthly climate Brazil 2014-09 to 2026-09: running (logs/gee_brazil.log). India districts: running (logs/india.log).
-
-## Weeks 4 to 9 (code done, waiting for data)
-- experiments.py: climatology and last-year baselines, LightGBM with and without AR features, 3 seeds, cluster bootstrap CIs, CQR conformal intervals, alert metrics, MLflow logging.
-- Spatial CV: leave-one-macro-region-out, blocked in space and time.
-- SHAP + biological sanity checks, final deployment model, India transfer test, map export.
-- FastAPI + Leaflet app, Dockerfile, render.yaml, monthly GitHub Actions update.
-- 27 tests pass (parsers, lags, no-leakage, splits, metrics, conformal, API).
-- Smoke test on a North-only subset ran every modeling stage end to end (numbers not reported, toy run).
-
 ## Open problems
-- Smoke run hint: conformal intervals calibrated on 2022 may under-cover later years (shift). Check on full data.
-- Deployment needs a Render account and a GitHub remote. Monthly job needs GEE service account secrets.
-- Docker daemon is not running on this machine, so the image is not built locally yet.
-- CLAUDE.md and the brief are in the first commit's history (untracked since). Strip before a public push if wanted.
-
-## Next step
-- When pulls finish: `features`, `temporal`, `spatial`, `explain`, `final`, `transfer`, `export`; then README, model card, report.
+- Conformal intervals under-cover in shifted years and some regions (confirmed on full data; reported).
+- India state ranks: transfer failed (reported honestly; elevation proxy and out-of-range inputs).
+- Deployment needs the GitHub repo, a Render account, and GEE service account secrets for the monthly job.
