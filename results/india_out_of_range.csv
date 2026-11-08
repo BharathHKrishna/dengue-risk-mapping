@@ -1,0 +1,13 @@
+item,value
+district-months,29486.0
+share with any input outside Brazil training range,0.2468
+districts affected in at least one month,442.0
+districts total,641.0
+rows with t2m_max_lag3 out of range,2064.0
+rows with t2m_max_lag2 out of range,2053.0
+rows with t2m_max_lag1 out of range,2040.0
+rows with elevation out of range,2024.0
+rows with t2m_mean_lag3 out of range,1761.0
+rows with t2m_mean_lag2 out of range,1745.0
+rows with t2m_mean_lag1 out of range,1722.0
+rows with lc_crop out of range,1472.0
