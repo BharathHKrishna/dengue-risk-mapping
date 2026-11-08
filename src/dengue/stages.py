@@ -128,6 +128,32 @@ def run_transfer(cfg: dict) -> None:
     s.to_csv(path(cfg, "results", "transfer_india_national_monthly.csv"), index=False)
 
 
+def india_ood_flags(cfg: dict, cols: list[str], start: str, end: str) -> pd.DataFrame:
+    """Per India district-month, the model inputs outside the Brazil training range.
+
+    Tree models extrapolate flat outside their training range, so these
+    predictions rest on effects never observed in Brazil. Returns district_id,
+    month and ``ood`` (JSON list of feature names, empty list if none).
+    """
+    br = load_table(cfg)
+    br = br[br["year"].between(*cfg["final"]["train_years"])]
+    lo, hi = br[cols].min(), br[cols].max()
+    clim = pd.read_parquet(path(cfg, "interim", "india_climate_monthly.parquet"))
+    static = pd.read_parquet(path(cfg, "interim", "india_static.parquet"))
+    X = build_unlabeled(
+        clim,
+        static.drop(columns=["pop_density", "pop", "area_km2"]),
+        cfg,
+        "district_id",
+        start,
+        end,
+    )
+    out = (X[cols] < lo) | (X[cols] > hi)
+    names = np.array(cols)
+    X["ood"] = [json.dumps(names[r].tolist()) for r in out.to_numpy()]
+    return X[["district_id", "month", "ood"]]
+
+
 def run_export(cfg: dict) -> None:
     """Write compact prediction tables and boundaries for the web app."""
     APP_DATA.mkdir(parents=True, exist_ok=True)
@@ -172,6 +198,9 @@ def run_export(cfg: dict) -> None:
     dp = pd.read_parquet(path(cfg, "results", "india_district_predictions.parquet"))
     dp = dp[dp["month"] >= start].copy()
     dp["rel_risk_pct"] = dp.groupby("month")["pred"].rank(pct=True) * 100
+    dp = dp.merge(
+        india_ood_flags(cfg, models["cols"], start, end), on=["district_id", "month"], how="left"
+    )
     dp = dp.rename(columns={"district_id": "region_id"})
     _round(dp).to_parquet(APP_DATA / "india_district_predictions.parquet", index=False)
 
@@ -231,4 +260,71 @@ def _write_geo(cfg: dict) -> None:
     s = s.assign(region_id="IN-STATE-" + s["state"])
     s[["region_id", "state", "geometry"]].to_file(
         APP_DATA / "india_states.geojson", driver="GeoJSON", COORDINATE_PRECISION=3
+    )
+
+
+def run_diag_no_elevation(cfg: dict) -> None:
+    """Post-hoc diagnostic: drop elevation, which SHAP showed to drive Himalayan predictions.
+
+    Elevation is a regional proxy in Brazil (high-burden plateau) and Indian hill
+    states lie outside Brazil's elevation range. This trains the climate-only
+    model without elevation (3 seeds, point models), then reports both the
+    Brazil temporal skill and the India state rank test. It is a diagnostic
+    chosen after seeing the India results, so it is reported next to, never
+    instead of, the pre-registered model.
+    """
+    from dengue.models.baselines import climatology
+    from dengue.models.gbm import fit_point
+    from dengue.utils.seed import set_seed
+    from dengue.validation.metrics import regression_metrics
+
+    df = load_table(cfg)
+    cols = [c for c in feature_columns(cfg, False) if c != "elevation"]
+    tm = temporal_split(df, cfg)
+    tr, te = df[tm["train"]], df[tm["test"]]
+    clim = climatology(tr, te).to_numpy()
+    preds = []
+    for seed in cfg["seeds"]:
+        set_seed(seed)
+        preds.append(fit_point(tr[cols], tr["y"], cfg, seed).predict(te[cols]))
+    tmet = regression_metrics(te["y"].to_numpy(), np.mean(preds, axis=0), base=clim)
+    pd.DataFrame([{"model": "lgbm_climate without elevation (3-seed mean)", **tmet}]).to_csv(
+        path(cfg, "results", "diag_noelev_temporal.csv"), index=False
+    )
+    fc = cfg["final"]
+    ftr = df[df["year"].between(*fc["train_years"])]
+    models = []
+    for seed in cfg["seeds"]:
+        set_seed(seed)
+        models.append(fit_point(ftr[cols], ftr["y"], cfg, seed))
+    clim_in = pd.read_parquet(path(cfg, "interim", "india_climate_monthly.parquet"))
+    static = pd.read_parquet(path(cfg, "interim", "india_static.parquet"))
+    dist = gpd.read_parquet(path(cfg, "interim", "india_districts_simplified.parquet"))
+    end = _next_month(cfg["gee"]["climate_end"])
+    X = build_unlabeled(
+        clim_in,
+        static.drop(columns=["pop_density", "pop", "area_km2"]),
+        cfg,
+        "district_id",
+        cfg["india"]["map_month_start"],
+        end,
+    )
+    X["pred"] = np.mean([m.predict(X[cols]) for m in models], axis=0)
+    districts = dist[["district_id", "state_current"]].merge(
+        static[["district_id", "pop", "area_km2"]]
+    )
+    annual = state_year_predictions(X[["district_id", "month", "pred"]], districts)
+    st = districts.assign(state=districts["state_current"].replace({"Ladakh": "Jammu & Kashmir"}))
+    st = st.groupby("state", as_index=False)[["pop", "area_km2"]].sum()
+    st["pop_density_w"] = st["pop"] / st["area_km2"]
+    obs = pd.read_parquet(path(cfg, "interim", "india_state_year_cases.parquet"))
+    years = list(range(cfg["india"]["label_years"][0], cfg["india"]["label_years"][1] + 1))
+    metrics, _ = transfer_table(annual, obs, st[["state", "pop_density_w"]], years)
+    metrics = metrics[metrics["method"].str.startswith("model")]
+    metrics = metrics.assign(method="model without elevation (diagnostic)")
+    metrics.to_csv(path(cfg, "results", "diag_noelev_transfer_by_year.csv"), index=False)
+    log.info(
+        "no-elevation diagnostic: temporal %s, India mean Spearman %.3f",
+        {k: round(v, 3) for k, v in tmet.items()},
+        metrics["spearman"].mean(),
     )

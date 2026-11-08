@@ -145,6 +145,13 @@ def stage_ablation(cfg: dict) -> None:
     print(run_ablation(cfg).to_string())
 
 
+def stage_diag(cfg: dict) -> None:
+    """Post-hoc diagnostic: model without elevation."""
+    from dengue.stages import run_diag_no_elevation
+
+    run_diag_no_elevation(cfg)
+
+
 def stage_explain(cfg: dict) -> None:
     """SHAP analysis and biological sanity checks."""
     from dengue.stages import run_explain
@@ -186,6 +193,7 @@ STAGES = {
     "transfer": stage_transfer,
     "export": stage_export,
     "ablation": stage_ablation,
+    "diag": stage_diag,
 }
 
 

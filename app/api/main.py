@@ -217,6 +217,13 @@ def risk(
         out["prediction_source"] = r["source"]
     else:
         out["relative_risk_percentile"] = round(float(r["rel_risk_pct"]), 1)
+        ood = json.loads(r["ood"]) if "ood" in r and isinstance(r["ood"], str) else []
+        out["inputs_outside_training_range"] = [label(f) for f in ood]
+        if ood:
+            out["extrapolation_warning"] = (
+                "Some inputs are outside the range seen in Brazil training data, so this "
+                "prediction extrapolates and is less reliable."
+            )
     return out
 
 

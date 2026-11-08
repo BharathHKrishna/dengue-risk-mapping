@@ -75,6 +75,7 @@ aside .muted, .hint { color: var(--muted); }
 aside table { width: 100%; border-collapse: collapse; margin: 8px 0; font-variant-numeric: tabular-nums; }
 aside td { padding: 3px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
 aside td:last-child { text-align: right; }
+.warn { background: var(--warn-bg); color: var(--warn-fg); padding: 6px 8px; border-radius: 4px; }
 .up { color: var(--accent); }
 .down { color: #2e6fb0; }
 .legend { background: var(--panel); color: var(--fg); padding: 8px 10px; border-radius: 6px; font-size: 12px; line-height: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.2); }

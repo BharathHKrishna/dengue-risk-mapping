@@ -38,6 +38,7 @@ def client(tmp_path, monkeypatch):
             "hi": [0.5, 0.6],
             "drivers": drivers,
             "rel_risk_pct": [40.0, 60.0],
+            "ood": ["[]", '["elevation"]'],
         }
     ).to_parquet(tmp_path / "india_district_predictions.parquet")
     pd.DataFrame(
@@ -99,6 +100,8 @@ def test_risk_brazil_month_without_observation(client):
 def test_risk_india_district_is_labeled_unvalidated(client):
     r = client.get("/risk", params={"region_id": "IN-D001", "month": "2025-12"}).json()
     assert r["relative_risk_percentile"] == 60.0
+    assert r["inputs_outside_training_range"] == ["elevation"]
+    assert "extrapolat" in r["extrapolation_warning"]
     assert "NOT validated" in r["disclaimer"]
 
 

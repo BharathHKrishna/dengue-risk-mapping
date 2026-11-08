@@ -136,6 +136,9 @@ async function showDetails(id) {
           <div class="muted">Prediction source: ${r.prediction_source}</div>`;
       } else {
         html += `<div>Relative risk: ${fmt(r.relative_risk_percentile)}th percentile among Indian districts this month</div>`;
+        if (r.extrapolation_warning) {
+          html += `<p class="warn"><b>Extrapolation:</b> ${r.extrapolation_warning} Outside range: ${r.inputs_outside_training_range.join(", ")}.</p>`;
+        }
       }
       html += `<h3 style="font-size:14px;margin:12px 0 2px">Top drivers</h3><table>`;
       for (const d of r.top_drivers) {
