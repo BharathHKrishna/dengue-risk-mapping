@@ -129,9 +129,52 @@ def shap() -> str:
     return "\n\n".join(parts)
 
 
+def ablation() -> str:
+    t = pd.read_csv(RES / "ablation_climate_value.csv")
+    out = pd.DataFrame(
+        {
+            "model (no recent cases)": t["model"],
+            "MAE": ci(t, "mae"),
+            "skill vs climatology": ci(t, "skill_vs_clim"),
+            "Spearman": t["spearman"].map("{:.3f}".format),
+            "alert AUC-PR": t["alert_auc_pr"].map("{:.3f}".format),
+        }
+    )
+    return "\n\n".join(
+        [
+            "### Does climate add skill beyond local seasonal climatology? (temporal test years)",
+            md(out),
+        ]
+    )
+
+
+def diagnostic() -> str:
+    parts = ["### Post-hoc diagnostic: model without elevation (chosen after the India results)"]
+    f = RES / "diag_noelev_temporal.csv"
+    if f.exists():
+        parts += ["Brazil temporal test:", md(pd.read_csv(f).round(3))]
+    f = RES / "diag_noelev_transfer_by_year.csv"
+    if f.exists():
+        y = pd.read_csv(f)
+        summ = pd.DataFrame(
+            [
+                {
+                    "method": y["method"].iloc[0],
+                    "years": len(y),
+                    "mean_spearman": round(y["spearman"].mean(), 3),
+                    "min_spearman": round(y["spearman"].min(), 3),
+                    "max_spearman": round(y["spearman"].max(), 3),
+                    "mean_top5_overlap": round(y["top5_overlap"].mean(), 2),
+                }
+            ]
+        )
+        parts += ["India state ranks:", md(summ), md(y.round(3))]
+    return "\n\n".join(parts)
+
+
 def main() -> None:
     sections = []
-    for fn in (temporal, spatial, shap, transfer):
+    for fn in (temporal, spatial, ablation, shap, transfer, diagnostic):
         try:
             sections.append(fn())
         except FileNotFoundError as e:
