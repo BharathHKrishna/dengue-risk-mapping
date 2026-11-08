@@ -5,15 +5,26 @@ All pipeline stages: `python -m dengue.cli <stage>`, in order:
 boundaries, cases, gee_brazil, features, india, temporal, spatial, explain, final, transfer, export
 (`python -m dengue.cli all` runs everything). Earth Engine project is in `.env` (EE_PROJECT, gitignored).
 
-## Current state: detached pipeline running (relaunched 2026-10-31 00:52, user closed VS Code)
+## Current state (2026-11-08): stages spatial, explain, final, transfer, export, ablation running
 
-`scripts/run_pipeline_detached.py` was relaunched 00:52 via WMI (Win32_Process Create, parent WmiPrvSE) so it
-survives closing VS Code. It runs `cases` + `gee_brazil` in parallel, then features, temporal,
-spatial, explain, final, transfer, export. On resume:
-1. Read `logs/pipeline.log` (look for "ALL STAGES DONE" or "STOPPED at stage X").
-2. If stopped, read `logs/stage_<X>.log`, fix, and rerun from that stage with `python -m dengue.cli <X>` (earlier stages are cached).
-3. Check results/*.csv, then write README, model card, report, and deploy.
-If the PC slept or rebooted, just start the runner again: completed pulls are cached and resume.
+Runs as a background chain in the Claude session (WMI-launched processes lost network after
+sleep, so they are not used). If interrupted: check `logs/pipeline.log`, rerun the remaining
+stages with `python -m dengue.cli <stage>` in order (everything before is cached).
+
+## Week 2 report (done)
+- InfoDengue: 5,570 municipalities, 3,492,390 weekly rows (627 weeks each, none missing).
+- Processed table: 735,240 municipality-months, 2015-01 to 2025-12 (`python -m dengue.cli features`).
+- Labels are notified cases (higher than "probable" totals; 2024: 10,545,135 notified).
+
+## Week 3 report (done)
+- Brazil monthly climate: 807,650 rows (5,570 x 145 months, 2014-09 to 2026-09); 3 island municipalities lack ERA5-Land.
+- India: 641 districts, 92,945 climate rows; GHSL population sums to 1,399 M.
+
+## Week 4 report (done): temporal hold-out (results/temporal_metrics.csv, `python -m dengue.cli temporal`)
+- Climate-only LightGBM: skill vs climatology 0.012 [0.006, 0.017]; MAE 1.821 vs climatology 1.758.
+- With past cases: skill 0.660 [0.654, 0.667], Spearman 0.821, alert AUC-PR 0.806.
+- Test years far above training levels (mean y 2.23/3.27/2.60 vs 0.98 to 2.15); climate explains little of the jump.
+- 90% conformal coverage: 0.83 (climate), 0.88 (AR). Under nominal because of the year shift.
 
 ## Week 1 report (done)
 - Verified (2026-10-30/31): InfoDengue API, OpenDengue V1.3 zips, IBGE geoftp mesh, DataMeet India layers, all 10 GEE asset IDs.
