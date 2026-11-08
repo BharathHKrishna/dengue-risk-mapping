@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 from dengue.ingest import gee_extract as g
-from dengue.models.final import build_unlabeled, load_final, predict_final
+from dengue.models.final import build_unlabeled, load_final, ood_lists, predict_final
 from dengue.stages import APP_DATA, _drivers, _round
 from dengue.utils.config import ROOT, load_config
 from dengue.utils.log import get_logger
@@ -63,6 +63,8 @@ def _update_view(cfg, models, geo_file, static_file, id_col, pred_file, new_mont
     old = pd.read_parquet(APP_DATA / pred_file)
     if "rel_risk_pct" in old:
         out["rel_risk_pct"] = out.groupby("month")["pred"].rank(pct=True) * 100
+        ranges = json.loads((APP_MODELS / "feature_ranges.json").read_text())
+        out["ood"] = ood_lists(X, models["cols"], ranges)
     else:
         out["source"] = "final model"
         for c in ("obs", "cases", "pop"):

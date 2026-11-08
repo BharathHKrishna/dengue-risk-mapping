@@ -135,9 +135,15 @@ def india_ood_flags(cfg: dict, cols: list[str], start: str, end: str) -> pd.Data
     predictions rest on effects never observed in Brazil. Returns district_id,
     month and ``ood`` (JSON list of feature names, empty list if none).
     """
+    from dengue.models.final import ood_lists
+    from dengue.update import APP_MODELS
+
     br = load_table(cfg)
     br = br[br["year"].between(*cfg["final"]["train_years"])]
-    lo, hi = br[cols].min(), br[cols].max()
+    ranges = {c: [float(br[c].min()), float(br[c].max())] for c in cols}
+    # Saved next to the deployment model so the monthly job flags new months identically.
+    APP_MODELS.mkdir(parents=True, exist_ok=True)
+    (APP_MODELS / "feature_ranges.json").write_text(json.dumps(ranges, indent=1))
     clim = pd.read_parquet(path(cfg, "interim", "india_climate_monthly.parquet"))
     static = pd.read_parquet(path(cfg, "interim", "india_static.parquet"))
     X = build_unlabeled(
@@ -148,9 +154,7 @@ def india_ood_flags(cfg: dict, cols: list[str], start: str, end: str) -> pd.Data
         start,
         end,
     )
-    out = (X[cols] < lo) | (X[cols] > hi)
-    names = np.array(cols)
-    X["ood"] = [json.dumps(names[r].tolist()) for r in out.to_numpy()]
+    X["ood"] = ood_lists(X, cols, ranges)
     return X[["district_id", "month", "ood"]]
 
 

@@ -101,3 +101,14 @@ def predict_final(models: dict, X: pd.DataFrame) -> pd.DataFrame:
         {"pred": pts, "lo": np.minimum(lo, pts), "hi": np.maximum(hi, pts)}, index=X.index
     )
     return out, contrib
+
+
+def ood_lists(X: pd.DataFrame, cols: list[str], ranges: dict[str, list[float]]) -> list[str]:
+    """For each row, a JSON list of features outside the training ``[min, max]`` range."""
+    import json
+
+    lo = pd.Series({c: ranges[c][0] for c in cols})
+    hi = pd.Series({c: ranges[c][1] for c in cols})
+    out = (X[cols] < lo) | (X[cols] > hi)
+    names = np.array(cols)
+    return [json.dumps(names[r].tolist()) for r in out.to_numpy()]
