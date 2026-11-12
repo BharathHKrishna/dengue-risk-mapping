@@ -8,7 +8,7 @@ regions, and transferred to India where only state-year case counts exist.
 > relative risk. It is validated against reported cases only for Brazilian
 > municipalities and Indian state-years. It is not a case forecast.
 
-**Live map:** _deployment pending_ &nbsp;|&nbsp; **API:** `GET /risk?region_id=BR-3304557&month=2025-03`
+**Live map:** https://dengue-risk-map.onrender.com &nbsp;|&nbsp; **API example:** [`/risk?region_id=BR-3304557&month=2025-03`](https://dengue-risk-map.onrender.com/risk?region_id=BR-3304557&month=2025-03) (free tier: first load after idle can take about a minute)
 
 ## Question
 

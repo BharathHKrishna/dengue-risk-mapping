@@ -5,7 +5,7 @@ All pipeline stages: `python -m dengue.cli <stage>`, in order:
 boundaries, cases, gee_brazil, features, india, temporal, spatial, explain, final, transfer, export
 (`python -m dengue.cli all` runs everything). Earth Engine project is in `.env` (EE_PROJECT, gitignored).
 
-## Current state (2026-11-08): all pipeline stages done, docs written; deployment pending accounts
+## Current state (2026-11-12): COMPLETE. Live at https://dengue-risk-map.onrender.com, repo github.com/BharathHKrishna/dengue-risk-mapping
 
 ## Weeks 5 to 7 report (done)
 - Spatial CV (`spatial`): skill vs pooled climatology 0.357 CW, -0.046 N, 0.041 NE, 0.085 S, 0.287 SE; worse than local history except South (0.101). Coverage 0.74 to 0.98.
@@ -22,8 +22,7 @@ boundaries, cases, gee_brazil, features, india, temporal, spatial, explain, fina
 - 28 tests pass, ruff clean.
 
 ## Next step
-- Strip CLAUDE.md and brief from git history, rename branch to main, push to GitHub
-  (BharathHKrishna/dengue-risk-mapping), deploy on Render, add EE service account secrets.
+- Optional: add EE service account secrets (EE_PROJECT, EE_SERVICE_ACCOUNT, EE_PRIVATE_KEY_JSON) so the monthly workflow refreshes the map.
 
 ## Week 2 report (done)
 - InfoDengue: 5,570 municipalities, 3,492,390 weekly rows (627 weeks each, none missing).
